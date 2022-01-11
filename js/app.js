@@ -48,6 +48,7 @@ const createPlayer = ({whichPlayer, playerName, sign}) => ({
         this.style.borderStyle = "inset";
         if (gameState.checkWinner()) return;
         gameState.nextTurn();
+        gameState.computerMove();
     }
 
     // call function to draw the board
@@ -125,8 +126,10 @@ const gameState = (function() {
         for (let i = 0; i < winningPositions.length; i++) {
             if (winningPositionsCheck(winningPositions, i, "1")) {
                     displayController.popupWinner();
+                    return true;
             } else if (winningPositionsCheck(winningPositions, i, "2")) {
                     displayController.popupWinner();
+                    return true;
             }
         }
     }
@@ -137,7 +140,24 @@ const gameState = (function() {
         document.getElementById(`${array[i][2]}`).dataset.player === player);
     }
 
+    function computerMove() {
+        let targetCell;
+        do {
+            const randomCellId = Math.floor(Math.random() * 9 + 1);
+            console.log(randomCellId);
+            targetCell = document.getElementById(`${randomCellId}`);
+        } while (targetCell.lastChild);
+        targetCell.dataset.player = activePlayer.whichPlayer;
+        const temporarySign = document.createElement("img");
+        temporarySign.src = gameState.getActivePlayer().sign.src;
+        targetCell.appendChild(temporarySign);
+        targetCell.style.borderStyle = "inset";
+        if (gameState.checkWinner()) return;
+        nextTurn();
+    }
+
     return {
+        computerMove,
         checkWinner,
         nextTurn,
         getActivePlayer,
