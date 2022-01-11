@@ -1,46 +1,10 @@
 // factory function for creating players
 
-const createPlayer = ({playerName, sign}) => ({
+const createPlayer = ({whichPlayer, playerName, sign}) => ({
+    whichPlayer,
     playerName,
-    sign
+    sign,
 })
-
-// create two players using the factory function
-
-const playerOne = createPlayer({
-    playerName: "John",
-    sign: "X"
-});
-const playerTwo = createPlayer({
-    playerName: "Sam",
-    sign: "O"
-});
-
-// create module for the gameState which controls the game
-const gameState = (function() {
-    const activePlayerDOM = document.querySelector("#active-player>h1");
-    let activePlayer = playerOne;
-    activePlayerDOM.textContent = activePlayer.playerName + " - " + activePlayer.sign;
-
-    function nextTurn() {
-        console.log("next turn");
-        if (activePlayer === playerOne) {
-            activePlayer = playerTwo;
-        } else {
-            activePlayer = playerOne;
-        }
-        activePlayerDOM.textContent = activePlayer.playerName + " - " + activePlayer.sign;
-    }
-
-    function getActivePlayer() {
-        return activePlayer;
-    }
-
-    return {
-        nextTurn,
-        getActivePlayer,
-    }
- })();
  
  const gameboard = (function() {
 
@@ -51,25 +15,24 @@ const gameState = (function() {
          [7, 8, 9],
     ];
 
-    // create the object which will store the DOM reference to each cell
-    let cells = {}
-
     // function which draws the board
-    function _drawBoard(array) {
+    function drawBoard() {
         const gameContainer = document.getElementById("game-container");
+        if (gameContainer.firstChild) {
+            gameContainer.removeChild(gameContainer.lastChild);
+        }
         const gameTable = document.createElement("table");
         gameContainer.appendChild(gameTable);
 
-        for (let i = 0; i < array.length; i++) {
+        for (let i = 0; i < _gameboardArray.length; i++) {
             const tr = document.createElement("tr");
             gameTable.appendChild(tr);
 
-            for (let n = 0; n < array[i].length; n++) {
+            for (let n = 0; n < _gameboardArray[i].length; n++) {
                 const td = document.createElement("td");
-                td.id = `${array[i][n]}`;
-                td.textContent = array[i][n];
+                td.id = `${_gameboardArray[i][n]}`;
+                td.dataset.player = "0";
                 td.addEventListener("click", _draw);
-                cells[array[i][n]] = td;
                 tr.appendChild(td);
             }
         }
@@ -77,18 +40,180 @@ const gameState = (function() {
 
     // function which draws in cells
     function _draw() {
-        if (gameState.getActivePlayer() === playerOne) {
-            this.textContent = "X";
-        } else {
-            this.textContent = "O";
-        }
+        if (this.lastChild) return;
+        this.dataset.player = gameState.getActivePlayer().whichPlayer;
+        const temporarySign = document.createElement("img");
+        temporarySign.src = gameState.getActivePlayer().sign.src;
+        this.appendChild(temporarySign);
+        this.style.borderStyle = "inset";
+        if (gameState.checkWinner()) return;
         gameState.nextTurn();
     }
 
     // call function to draw the board
-    _drawBoard(_gameboardArray);
+    // drawBoard(_gameboardArray);
 
     return {
-        cells
+        drawBoard
     };
  })();
+
+ // create two players using the factory function
+
+const x = document.createElement("img");
+x.src = "img/X.png";
+const o = document.createElement("img");
+o.src = "img/O.png";
+
+const playerOne = createPlayer({
+    whichPlayer: "1",
+    playerName: "",
+    sign: x
+});
+const playerTwo = createPlayer({
+    whichPlayer: "2",
+    playerName: "",
+    sign: o
+});
+
+// create module for the gameState which controls the game
+const gameState = (function() {
+    const resetBtn = document.querySelector("#reset");
+    resetBtn.addEventListener("click", _reset);
+
+    let activePlayer;
+
+    function setActivePlayer(player) {
+        const activePlayerDOM = document.querySelector("#active-player>h1");
+        activePlayer = player;
+        activePlayerDOM.textContent = activePlayer.playerName;
+        activePlayerDOM.appendChild(getActivePlayer().sign);
+    }
+
+    function nextTurn() {
+        const activePlayerDOM = document.querySelector("#active-player>h1");
+
+        if (activePlayer === playerOne) {
+            activePlayer = playerTwo;
+        } else {
+            activePlayer = playerOne;
+        }
+        activePlayerDOM.textContent = activePlayer.playerName;
+        activePlayerDOM.appendChild(getActivePlayer().sign);
+    }
+
+    function getActivePlayer() {
+        return activePlayer;
+    }
+
+    function _reset() {
+        displayController.popupNames();
+    }
+
+    function checkWinner() {
+        const winningPositions = [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+            [1, 4, 7],
+            [2, 5, 8],
+            [3, 6, 9],
+            [1, 5, 9],
+            [3, 5, 7]
+        ]
+
+        for (let i = 0; i < winningPositions.length; i++) {
+            if (winningPositionsCheck(winningPositions, i, "1")) {
+                    displayController.popupWinner();
+            } else if (winningPositionsCheck(winningPositions, i, "2")) {
+                    displayController.popupWinner();
+            }
+        }
+    }
+
+    function winningPositionsCheck(array, i, player) {
+        return (document.getElementById(`${array[i][0]}`).dataset.player === player &&
+        document.getElementById(`${array[i][1]}`).dataset.player === player &&
+        document.getElementById(`${array[i][2]}`).dataset.player === player);
+    }
+
+    return {
+        checkWinner,
+        nextTurn,
+        getActivePlayer,
+        setActivePlayer,
+    }
+ })();
+
+ const displayController = (function() {
+     function popupNames() {
+        const body = document.querySelector("body");
+        const popupContainer = document.createElement("div");
+        popupContainer.id = "popup-container";
+        const mask = document.createElement("div")
+        mask.id = "mask";
+        const popup = document.createElement("div")
+        popup.classList.add("popup");
+        const inputPlayerOne = document.createElement("input");
+        const inputPlayerTwo = document.createElement("input");
+        inputPlayerOne.type = "text";
+        inputPlayerOne.placeholder = "* Name for Player One *";
+        inputPlayerTwo.type = "text";
+        inputPlayerTwo.placeholder = "* Name for Player Two *";
+        const startBtn = document.createElement("button");
+        startBtn.id = "start";
+        startBtn.textContent = "START";
+        startBtn.addEventListener("click", function() {startGame(inputPlayerOne, inputPlayerTwo, popupContainer)});
+        popup.appendChild(inputPlayerOne);
+        popup.appendChild(inputPlayerTwo);
+        popup.appendChild(startBtn);
+        mask.appendChild(popup);
+        popupContainer.appendChild(mask);
+        body.appendChild(popupContainer);
+    }
+
+    function popupWinner() {
+        const body = document.querySelector("body");
+        const popupContainer = document.createElement("div");
+        popupContainer.id = "popup-container";
+        const mask = document.createElement("div")
+        mask.id = "mask";
+        const popup = document.createElement("div")
+        popup.classList.add("popup");
+        const popupText = document.createElement("h1");
+        popupText.textContent = `${gameState.getActivePlayer().playerName} is the winner!`;
+        popup.appendChild(popupText);
+        const startBtn = document.createElement("button");
+        startBtn.id = "start";
+        startBtn.textContent = "RESTART";
+        startBtn.addEventListener("click", function() {
+            popupNames();
+            if (popupContainer.firstChild) {
+                popupContainer.removeChild(popupContainer.lastChild);
+            };
+        });
+        popup.appendChild(startBtn);
+        mask.appendChild(popup);
+        popupContainer.appendChild(mask);
+        body.appendChild(popupContainer);
+    }
+
+    function startGame(inputPlayerOne, inputPlayerTwo, popupContainer) {
+        playerOne.playerName = inputPlayerOne.value;
+        playerTwo.playerName = inputPlayerTwo.value;
+        if (popupContainer.firstChild) {
+            popupContainer.removeChild(popupContainer.lastChild);
+        }
+        gameState.setActivePlayer(playerOne);
+        gameboard.drawBoard();
+    }
+
+    return {
+        popupNames,
+        popupWinner
+    }
+ })();
+
+ // actual start
+
+ displayController.popupNames();
