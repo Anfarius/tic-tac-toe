@@ -8,8 +8,14 @@ const createPlayer = ({whichPlayer, playerName, sign}) => ({
  
  const gameboard = (function() {
 
+    let aiOn = false;
+
+    function setAiOn(status) {
+        aiOn = status;
+    }
+
     // 2d array acting as a base for the html table
-    const _gameboardArray = [
+    const gameboardArray = [
          [1, 2, 3],
          [4, 5, 6],
          [7, 8, 9],
@@ -24,13 +30,13 @@ const createPlayer = ({whichPlayer, playerName, sign}) => ({
         const gameTable = document.createElement("table");
         gameContainer.appendChild(gameTable);
 
-        for (let i = 0; i < _gameboardArray.length; i++) {
+        for (let i = 0; i < gameboardArray.length; i++) {
             const tr = document.createElement("tr");
             gameTable.appendChild(tr);
 
-            for (let n = 0; n < _gameboardArray[i].length; n++) {
+            for (let n = 0; n < gameboardArray[i].length; n++) {
                 const td = document.createElement("td");
-                td.id = `${_gameboardArray[i][n]}`;
+                td.id = `${gameboardArray[i][n]}`;
                 td.dataset.player = "0";
                 td.addEventListener("click", _draw);
                 tr.appendChild(td);
@@ -48,14 +54,17 @@ const createPlayer = ({whichPlayer, playerName, sign}) => ({
         this.style.borderStyle = "inset";
         if (gameState.checkWinner()) return;
         gameState.nextTurn();
-        gameState.computerMove();
+        if (aiOn) gameState.computerMove();
     }
 
     // call function to draw the board
-    // drawBoard(_gameboardArray);
+    // drawBoard(gameboardArray);
 
     return {
-        drawBoard
+        gameboardArray,
+        drawBoard,
+        setAiOn,
+        aiOn
     };
  })();
 
@@ -111,27 +120,43 @@ const gameState = (function() {
         displayController.popupNames();
     }
 
-    function checkWinner() {
-        const winningPositions = [
-            [1, 2, 3],
-            [4, 5, 6],
-            [7, 8, 9],
-            [1, 4, 7],
-            [2, 5, 8],
-            [3, 6, 9],
-            [1, 5, 9],
-            [3, 5, 7]
-        ]
+    const winningPositions = [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+        [1, 4, 7],
+        [2, 5, 8],
+        [3, 6, 9],
+        [1, 5, 9],
+        [3, 5, 7]
+    ]
 
+    function checkWinner() {
         for (let i = 0; i < winningPositions.length; i++) {
             if (winningPositionsCheck(winningPositions, i, "1")) {
-                    displayController.popupWinner();
-                    return true;
+                displayController.popupWinner(true);
+                return true;
             } else if (winningPositionsCheck(winningPositions, i, "2")) {
-                    displayController.popupWinner();
-                    return true;
+                displayController.popupWinner(true);
+                return true;
             }
         }
+        if (checkDraw()) {
+            displayController.popupWinner(false);
+            return true;
+        }
+    }
+
+    function checkDraw() {
+        for (let i = 0; i < gameboard.gameboardArray.length; i++) {
+            for (let n = 0; n < gameboard.gameboardArray[i].length; n++) {
+                let cell = document.getElementById(`${gameboard.gameboardArray[i][n]}`);
+                if (cell.dataset.player === "0") {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     function winningPositionsCheck(array, i, player) {
@@ -144,7 +169,6 @@ const gameState = (function() {
         let targetCell;
         do {
             const randomCellId = Math.floor(Math.random() * 9 + 1);
-            console.log(randomCellId);
             targetCell = document.getElementById(`${randomCellId}`);
         } while (targetCell.lastChild);
         targetCell.dataset.player = activePlayer.whichPlayer;
@@ -155,6 +179,32 @@ const gameState = (function() {
         if (gameState.checkWinner()) return;
         nextTurn();
     }
+
+    // incomplete function for evaluating moves made by the computer
+
+    // function evaluateMove() {
+    //     let validMoves = [];
+    //     let targetCell;
+
+    //     for (let i = 0; i < gameboard.gameboardArray.length; i++) {
+    //         for (let n = 0; n < gameboard.gameboardArray[i].length; n++) {
+    //             let cell = document.getElementById(`${gameboard.gameboardArray[i][n]}`);
+    //             if (cell.dataset.player < 1) validMoves.push(cell);
+    //         }
+    //     }
+
+    //     console.log(validMoves);
+
+    //     for (cell of validMoves) {
+    //         simulateMove(cell);
+    //     }
+
+    //     const randomCellId = Math.floor(Math.random() * validMoves.length);
+    //     console.log(randomCellId);
+    //     targetCell = validMoves[randomCellId];
+
+    //     return targetCell;
+    // }
 
     return {
         computerMove,
@@ -177,22 +227,35 @@ const gameState = (function() {
         const inputPlayerOne = document.createElement("input");
         const inputPlayerTwo = document.createElement("input");
         inputPlayerOne.type = "text";
+        inputPlayerOne.style.color = "black";
         inputPlayerOne.placeholder = "* Name for Player One *";
         inputPlayerTwo.type = "text";
+        inputPlayerTwo.style.color = "black";
         inputPlayerTwo.placeholder = "* Name for Player Two *";
+        const computerToggleContainer = document.createElement("div");
+        computerToggleContainer.id = "computer-toggle-container";
+        const computerToggleText = document.createElement("h1");
+        computerToggleText.textContent = "AI acting as Player Two";
+        computerToggleText.id = "computer-toggle-text";
+        const computerToggle = document.createElement("input");
+        computerToggle.type = "checkbox";
+        computerToggle.id = "computer-toggle";
+        computerToggleContainer.appendChild(computerToggleText);
+        computerToggleContainer.appendChild(computerToggle);
         const startBtn = document.createElement("button");
         startBtn.id = "start";
         startBtn.textContent = "START";
         startBtn.addEventListener("click", function() {startGame(inputPlayerOne, inputPlayerTwo, popupContainer)});
         popup.appendChild(inputPlayerOne);
         popup.appendChild(inputPlayerTwo);
+        popup.appendChild(computerToggleContainer);
         popup.appendChild(startBtn);
         mask.appendChild(popup);
         popupContainer.appendChild(mask);
         body.appendChild(popupContainer);
     }
 
-    function popupWinner() {
+    function popupWinner(result) {
         const body = document.querySelector("body");
         const popupContainer = document.createElement("div");
         popupContainer.id = "popup-container";
@@ -201,12 +264,18 @@ const gameState = (function() {
         const popup = document.createElement("div")
         popup.classList.add("popup");
         const popupText = document.createElement("h1");
-        popupText.textContent = `${gameState.getActivePlayer().playerName} is the winner!`;
+        popupText.style.fontSize = "24px";
+        if (result) {
+            popupText.textContent = `${gameState.getActivePlayer().playerName} is the winner!`;
+        } else {
+            popupText.textContent = "The game ends in a draw! no one wins!";
+        }
         popup.appendChild(popupText);
         const startBtn = document.createElement("button");
         startBtn.id = "start";
-        startBtn.textContent = "RESTART";
+        startBtn.textContent = "RESET";
         startBtn.addEventListener("click", function() {
+            gameboard.setAiOn(false);
             popupNames();
             if (popupContainer.firstChild) {
                 popupContainer.removeChild(popupContainer.lastChild);
@@ -221,6 +290,8 @@ const gameState = (function() {
     function startGame(inputPlayerOne, inputPlayerTwo, popupContainer) {
         playerOne.playerName = inputPlayerOne.value;
         playerTwo.playerName = inputPlayerTwo.value;
+        const computerToggle = document.getElementById("computer-toggle");
+        if (computerToggle.checked) gameboard.setAiOn(true);
         if (popupContainer.firstChild) {
             popupContainer.removeChild(popupContainer.lastChild);
         }
